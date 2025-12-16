@@ -1,0 +1,90 @@
+/* src/index.css */
+:root {
+  --primary-color: #2563eb; /* Azul moderno */
+  --primary-hover: #1d4ed8;
+  --bg-color: #f3f4f6;      /* Cinza bem claro para o fundo */
+  --card-bg: #ffffff;
+  --text-color: #1f2937;
+  --border-radius: 8px;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Estilizando TODOS os botões do sistema */
+button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.95rem;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Botões secundários (ex: Cancelar) */
+button.secondary {
+  background-color: #9ca3af;
+}
+
+/* Estilizando TODOS os Inputs */
+input[type="text"], 
+input[type="file"],
+input[type="password"] {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Estilo para "Cards" (Áreas brancas) */
+.card-container {
+  background-color: var(--card-bg);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  max-width: 500px;
+  margin: 2rem auto; /* Centraliza */
+}
+
+/* Ajustes no Calendário para ficar mais bonito */
+.rbc-calendar {
+  background-color: white;
+  padding: 20px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  font-family: 'Inter', sans-serif;
+}
+
+.rbc-header {
+  padding: 10px !important;
+  font-weight: bold;
+  color: #4b5563;
+}
+
+.rbc-today {
+  background-color: #eff6ff !important; /* Azulzinho bem claro no dia de hoje */
+}
