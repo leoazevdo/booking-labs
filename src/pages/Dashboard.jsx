@@ -10,43 +10,82 @@ const locales = { 'pt-BR': ptBR };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 const LISTA_TURMAS = [
-  "1º Ano A - Fundamental", "1º Ano B - Fundamental", 
-  "2º Ano A - Fundamental", "2º Ano B - Fundamental", 
-  "3º Ano A - Médio", "3º Ano B - Médio", 
-  "Laboratório de Informática", "Laboratório de Ciências", 
-  "Sala de Vídeo", "Quadra Poliesportiva", "Reunião Pedagógica"
+  "Infantil III", "Infantil IV", "Infantil V",
+  "1º Ano 1 - Fundamental", "1º Ano 2 - Fundamental", "1º Ano 3 - Fundamental",
+  "2º Ano 1 - Fundamental", "2º Ano 2 - Fundamental", "2º Ano 3 - Fundamental",
+  "3º Ano 1 - Fundamental", "3º Ano 2 - Fundamental", "3º Ano 3 - Fundamental",
+  "4º Ano 1 - Fundamental", "4º Ano 2 - Fundamental", "4º Ano 3 - Fundamental",
+  "5º Ano 1 - Fundamental", "5º Ano 2 - Fundamental", "5º Ano 3 - Fundamental",
+  "6º Ano 1 - Fundamental", "6º Ano 2 - Fundamental", "6º Ano 3 - Fundamental",
+  "7º Ano 1 - Fundamental", "7º Ano 2 - Fundamental", "7º Ano 3 - Fundamental",
+  "8º Ano 1 - Fundamental", "8º Ano 2 - Fundamental", "8º Ano 3 - Fundamental",
+  "9º Ano 1 - Fundamental", "9º Ano 2 - Fundamental", "9º Ano 3 - Fundamental",
+  "1º Ano - Médio", "2º Ano - Médio", "3º Ano - Médio",
+  "Período Integral"
 ];
 
 export default function Dashboard() {
-  const { user, agendamentos, novoAgendamento, removerAgendamento, editarAgendamento, logout } = useData();
+  // --- 1. TODOS OS HOOKS DEVEM FICAR NO TOPO (NUNCA DENTRO DE IF) ---
+  
+  const { user, agendamentos, novoAgendamento, removerAgendamento, editarAgendamento, logout, loading } = useData();
   const navigate = useNavigate();
 
+  // Estados
   const [dataAtual, setDataAtual] = useState(new Date());
-
-  // --- ESTADOS PARA OS MODAIS ---
   const [modalCreateOpen, setModalCreateOpen] = useState(false);
   const [modalDetailsOpen, setModalDetailsOpen] = useState(false);
-  
   const [diaSelecionado, setDiaSelecionado] = useState(null);
-  const [eventoSelecionado, setEventoSelecionado] = useState(null); // Para edição/exclusão
-
-  // Campos do Formulário (Compartilhados entre criar e editar)
+  const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [turma, setTurma] = useState('');
   const [horaInicio, setHoraInicio] = useState('08:00');
   const [horaFim, setHoraFim] = useState('09:00');
 
-  // Converter datas
+  // Redirecionamento (useEffect)
+  useEffect(() => {
+    if (!loading && !user) {
+        navigate('/');
+    }
+  }, [user, loading, navigate]);
+
+  // Conversão dos Eventos (useMemo) - Corrigido para garantir as cores
   const eventosCalendario = useMemo(() => {
-    return agendamentos.map(evento => ({
-      ...evento,
-      start: new Date(evento.start),
-      end: new Date(evento.end)
-    }));
+    if (!agendamentos) return [];
+    
+    return agendamentos.map(evento => {
+      // 1. Descobrir onde está a data (pode vir como 'start' ou 'start_time')
+      const dataInicioString = evento.start || evento.start_time;
+      const dataFimString = evento.end || evento.end_time;
+
+      // 2. Criar objetos Date reais (o calendário exige isso)
+      const dataInicioObj = new Date(dataInicioString);
+      const dataFimObj = new Date(dataFimString);
+
+      // 3. Retornar o objeto formatado para o Calendário
+      return {
+        ...evento,
+        id: evento.id,
+        title: evento.title,
+        start: dataInicioObj, // Propriedade OBRIGATÓRIA para o calendário
+        end: dataFimObj,      // Propriedade OBRIGATÓRIA para o calendário
+        
+        // Garante compatibilidade dos outros campos
+        professorId: evento.professorId || evento.professor_id, 
+        professorNome: evento.professorNome || evento.professor_nome,
+        turma: evento.turma
+      };
+    });
   }, [agendamentos]);
+  // --- 2. APENAS AGORA PODEMOS TER RETORNOS CONDICIONAIS ---
 
-  if (!user) return <div style={{padding: 20}}>Carregando...</div>;
+  if (loading) {
+    return <div style={{display:'flex', justifyContent:'center', marginTop: 50}}>Carregando agenda do servidor...</div>;
+  }
 
-  // --- FUNÇÕES AUXILIARES ---
+  // Se não tiver usuário e já parou de carregar, não renderiza nada (o useEffect vai redirecionar)
+  if (!user) return null;
+
+  // --- 3. FUNÇÕES AUXILIARES ---
+
   const limparFormulario = () => {
     setTurma('');
     setHoraInicio('08:00');
@@ -54,34 +93,27 @@ export default function Dashboard() {
     setEventoSelecionado(null);
   };
 
-  // --- ABRIR MODAL DE CRIAÇÃO ---
   const handleSelectSlot = ({ start }) => {
     setDiaSelecionado(start);
     limparFormulario();
     setModalCreateOpen(true);
   };
 
-  // --- ABRIR MODAL DE DETALHES/EDIÇÃO ---
   const handleSelectEvent = (event) => {
     setEventoSelecionado(event);
-    setDiaSelecionado(event.start); // Necessário para manter a data base
-    
-    // Preenche o formulário com os dados do evento clicado
+    setDiaSelecionado(event.start);
     setTurma(event.turma);
     setHoraInicio(format(event.start, 'HH:mm'));
     setHoraFim(format(event.end, 'HH:mm'));
-    
     setModalDetailsOpen(true);
   };
 
-  // --- LÓGICA DE SALVAR (CRIAR OU EDITAR) ---
   const handleSalvar = (isEdicao = false) => {
     if (!turma) return alert('Selecione uma Turma.');
 
     const [hIni, mIni] = horaInicio.split(':').map(Number);
     const [hFim, mFim] = horaFim.split(':').map(Number);
 
-    // Usa a data do dia selecionado (ou do evento original se for edição)
     const baseDate = isEdicao ? eventoSelecionado.start : diaSelecionado;
 
     const dataInicio = setMinutes(setHours(baseDate, hIni), mIni);
@@ -89,11 +121,8 @@ export default function Dashboard() {
 
     if (dataFim <= dataInicio) return alert('Horário final deve ser maior que inicial.');
 
-    // VERIFICAÇÃO DE CONFLITO
     const conflito = eventosCalendario.find(evento => {
-      // Se for edição, ignora o PRÓPRIO evento que estamos editando
       if (isEdicao && evento.id === eventoSelecionado.id) return false;
-
       if (!isSameDay(baseDate, evento.start)) return false;
       return (dataInicio < evento.end && dataFim > evento.start);
     });
@@ -115,7 +144,7 @@ export default function Dashboard() {
       editarAgendamento({ ...payload, id: eventoSelecionado.id });
       setModalDetailsOpen(false);
     } else {
-      novoAgendamento({ ...payload, id: Date.now() });
+      novoAgendamento({ ...payload }); 
       setModalCreateOpen(false);
     }
     limparFormulario();
@@ -128,11 +157,13 @@ export default function Dashboard() {
     }
   };
 
+  // ESTILIZAÇÃO (Azul para mim, Vermelho para outros)
   const eventStyleGetter = (event) => {
+    // Verifica o ID do evento contra o login do usuário atual
     const ehMeu = event.professorId === user.login;
     return {
       style: {
-        backgroundColor: ehMeu ? '#2563eb' : '#ef4444',
+        backgroundColor: ehMeu ? '#2563eb' : '#ef4444', // Azul ou Vermelho
         color: 'white',
         border: 'none',
         opacity: ehMeu ? 1 : 0.8,
@@ -141,7 +172,6 @@ export default function Dashboard() {
     };
   };
 
-  // Renderiza o formulário (reutilizado nos dois modais)
   const renderFormulario = () => (
     <>
       <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
@@ -162,6 +192,7 @@ export default function Dashboard() {
     </>
   );
 
+  // --- 4. RENDERIZAÇÃO PRINCIPAL ---
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       
@@ -187,7 +218,7 @@ export default function Dashboard() {
         messages={{ next: "Próximo", previous: "Anterior", today: "Hoje", month: "Mês", week: "Semana", day: "Dia" }}
       />
 
-      
+      {/* Modal Criar */}
       {modalCreateOpen && (
         <div style={styles.overlay}>
           <div className="card-container" style={styles.modal}>
@@ -201,7 +232,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      
+      {/* Modal Detalhes */}
       {modalDetailsOpen && eventoSelecionado && (
         <div style={styles.overlay}>
           <div className="card-container" style={styles.modal}>
@@ -209,7 +240,6 @@ export default function Dashboard() {
                 <h3 style={{color: '#2563eb'}}>Detalhes do Agendamento</h3>
                 <span style={{fontSize: '0.8rem', color:'#888'}}>Criado por: {eventoSelecionado.professorNome}</span>
             </div>
-            
             
             {eventoSelecionado.professorId === user.login ? (
               <>
@@ -221,7 +251,6 @@ export default function Dashboard() {
                 </div>
               </>
             ) : (
-              //apenas visualizacao para outros usuarios
               <div style={{marginTop: '20px'}}>
                 <p><strong>Turma:</strong> {eventoSelecionado.turma}</p>
                 <p><strong>Horário:</strong> {format(eventoSelecionado.start, 'HH:mm')} às {format(eventoSelecionado.end, 'HH:mm')}</p>
@@ -236,7 +265,6 @@ export default function Dashboard() {
     </div>
   );
 }
-
 
 const styles = {
   overlay: {
